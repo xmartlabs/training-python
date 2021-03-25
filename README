@@ -1,0 +1,2 @@
+In order to use docker to launch postgresql server:
+docker run --name postgresql-container -p 5432:5432 -e POSTGRES_PASSWORD=password123 -d postgres
