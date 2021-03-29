@@ -18,7 +18,6 @@ class User(db.Model):
     return f"User(id={self.id!r}, name={self.name!r}, email={self.email!r})"
 
 
-
 @app.route('/users', methods=['POST'])
 def create_user():  
   password = request.form['password']
@@ -32,6 +31,12 @@ def create_user():
   db.session.commit()
   user_response = []
 
+  return jsonify(f"id: {user.id}, name: {user.name}, passwordhash: {user.password_hash}"), 201
+
+@app.route('/users', methods=['GET'])
+def list_users():  
+  user_response = []
+
   for user in User.query.all():
     user_response.append(f"id: {user.id}, name: {user.name}, passwordhash: {user.password_hash}")
-  return jsonify(user_response), 201
+  return jsonify(user_response)
