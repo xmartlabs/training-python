@@ -17,7 +17,7 @@ depends_on = None
 
 
 def upgrade():
-  op.add_column('users', sa.Column('password_hash', sa.String(100)))
+  op.add_column('users', sa.Column('password_hash', sa.String))
 
 
 def downgrade():
