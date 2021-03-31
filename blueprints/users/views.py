@@ -1,6 +1,7 @@
 from flask import Blueprint, request, current_app, jsonify, g
 import jwt
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from models.user import User
 from database import db
 import bcrypt
@@ -26,7 +27,7 @@ def set_current_user():
   payload = jwt.decode(token, jwt_secret(), algorithms=["HS256"])
   
   stmt = select(User).where(User.email == payload['user_email'])
-  user = db.session.execute(stmt).fetchone() 
+  user = db.session.execute(stmt).first()
   
   if user is not None:
     g.current_user = user[0]
@@ -54,7 +55,7 @@ def login():
   password = request.form.get('password')
   email = request.form.get('email')
   stmt = select(User).where(User.email == email)
-  user = db.session.execute(stmt).fetchone()
+  user = db.session.execute(stmt).first()
   
   if (user == None):
     return jsonify('wrong credentials'), 401
@@ -71,14 +72,14 @@ def login():
 def list_users():  
   user_response = []
 
-  for user in User.query.all():
+  for user in User.query.yield_per(10):
     user_response.append({"id": user.id, 'name': user.name, 'email': user.email})
   return jsonify(user_response)
 
 @users.route('/users', methods=['POST'])
 @skip_login
 def create_user():
-  try:  
+  try:
     password = request.form['password']
     name = request.form['name']
     email = request.form['email']
