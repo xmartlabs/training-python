@@ -8,17 +8,9 @@ from functools import wraps
 
 users = Blueprint('users', __name__)
  
-def require_login(func):
-  @wraps(func)
-
-  def inner(*args, **kwargs):
-    if g.current_user is None:
-      return 'unauthorized', 401
-
-    return func()
-
-  return inner
-
+def skip_login(func):
+  func.is_public = True
+  return func
 
 def jwt_secret():
   return current_app.config['JWT_SECRET']
@@ -28,6 +20,7 @@ def set_current_user():
   token = request.headers.get('Authorization', None)
 
   if token is None:
+    g.current_user = None
     return
 
   payload = jwt.decode(token, jwt_secret(), algorithms=["HS256"])
@@ -41,12 +34,22 @@ def set_current_user():
     g.current_user = None
   
 
+@users.before_request
+def require_login():
+    login_valid = g.current_user is not None
+
+    if (request.endpoint and 
+        'static' not in request.endpoint and 
+        not login_valid and 
+        not getattr(current_app.view_functions[request.endpoint], 'is_public', False) ) :
+        return 'unauthorized', 401
+
 @users.route('/me', methods=['GET'])
-@require_login
 def me():  
   return jsonify({'id': g.current_user.id, 'name': g.current_user.name})
 
 @users.route('/login', methods=['POST'])
+@skip_login
 def login():  
   password = request.form.get('password')
   email = request.form.get('email')
@@ -65,7 +68,6 @@ def login():
     return jsonify('wrong credentials'), 401
 
 @users.route('/users', methods=['GET'])
-@require_login
 def list_users():  
   user_response = []
 
@@ -74,6 +76,7 @@ def list_users():
   return jsonify(user_response)
 
 @users.route('/users', methods=['POST'])
+@skip_login
 def create_user():
   try:  
     password = request.form['password']
